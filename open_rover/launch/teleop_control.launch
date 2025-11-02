@@ -1,0 +1,43 @@
+<launch>
+    <arg name="openrover_node_name" default="rr_openrover_basic" />
+
+    <!-- OpenRover Driver -->
+    <node pkg="rr_openrover_basic" type="openrover_basic_node" name="$(arg openrover_node_name)" respawn="false" output="screen">
+        <param name="port" value="/dev/ttyUSB0" />
+        <param name="drive_type" value="2wd" />
+        <param name="enable_timeout" type="bool" value="true"/>
+        <param name="timeout" type="double" value="0.3"/>
+        <param name="closed_loop_control_on" type="bool" value="false" />
+        <param name="total_weight" type="double" value="20.41"/>
+        <param name="traction_factor" value="0.610"/>
+        <param name="odom_covariance_0" value="0.01"/>
+        <param name="odom_covariance_35" value="0.03"/>
+    </node>
+
+    <!-- OpenRover Diagnostics -->
+    <node pkg="rr_openrover_basic" type="diagnostics.py" name="rr_openrover_diagnostics_node" output="log">
+        <remap from="/raw_slow_rate_data" to="/$(arg openrover_node_name)/raw_slow_rate_data"/>
+    </node>
+
+    <!-- ROS Joystick driver -->
+    <node pkg="joy" type="joy_node" name="joy_node">
+        <param name="autorepeat_rate" value="10" />
+        <remap from="joy" to="joystick"/>
+    </node>
+
+    <!-- Logitech F710 Gamepad Mapper -->
+    <node pkg="rr_control_input_manager" type="logitech_mapper.py" name="logitech_mapper_node" output="screen">
+        <param name="mode" value="x" />
+        <param name="joy_topic" value="joystick" />
+        <param name="max_vel_drive" value="1.3" />
+        <param name="max_vel_turn" value="4.5" />
+    </node>
+
+    <!-- Control input manager -->
+    <node pkg="rr_control_input_manager" type="control_input_manager.py" name="control_input_manager_node">
+    </node>
+
+    <!-- Image Publisher -->
+    <node name="image_publisher" pkg="open_rover" type="image_pub.py" output="screen" />
+ 
+</launch>

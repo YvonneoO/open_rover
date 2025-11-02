@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Author: Nick Fragale
 # Description: This script manages cmd_vel from multiple sources so that they don't over-ride eachother, and so that soft E-stop can works from multiple sources. 
@@ -36,6 +36,8 @@ class CmdVelManager(object):
         self.auto_dock_sub = rospy.Subscriber("/cmd_vel/auto_dock", TwistStamped, self.auto_dock_cb)
         self.soft_estop_enable_sub = rospy.Subscriber("/soft_estop/enable", Bool, self.soft_estop_enable_cb)
         self.soft_estop_reset_sub = rospy.Subscriber("/soft_estop/reset", Bool, self.soft_estop_reset_cb)
+        self.x_button_sub = rospy.Subscriber("/joystick/x_button", Bool, self.x_button_cb)
+        self.start_button_sub = rospy.Subscriber("/joystick/start_button", Bool, self.start_button_cb)
 
         # ROS Publishers
         self.managed_pub = rospy.Publisher('/cmd_vel/managed', TwistStamped, queue_size=1)
@@ -67,7 +69,7 @@ class CmdVelManager(object):
         fleet_manager_time_elapsed = current_time - self.last_fleet_manager_command_time
         joy_time_elapsed = current_time - self.last_joy_command_time
 
-        if joy_time_elapsed.to_sec > 2:
+        if joy_time_elapsed.to_sec() > 2:
             self.lock_release_cb()
 
 
@@ -163,6 +165,21 @@ class CmdVelManager(object):
         self.local_control_lock = False
         self.remote_control_lock = False
 
+    def x_button_cb(self, data):
+        # X button on joystick enables soft e-stop
+        if data.data == True:
+            if not self.soft_estop:
+                # Only enable if not already enabled (avoid repeated messages)
+                enable_msg = Bool()
+                enable_msg.data = True
+                self.soft_estop_enable_cb(enable_msg)
+                rospy.logwarn("[CONTROL_INPUT_MANAGER] E-stop enabled via X button")
+
+    def start_button_cb(self, data):
+        # Start button on joystick resets soft e-stop
+        if data.data == True:
+            self.soft_estop_reset_cb(data)
+            rospy.logwarn("[CONTROL_INPUT_MANAGER] E-stop reset via START button")
 
 if __name__ == '__main__':
     rospy.init_node("control_input_manager_node")
